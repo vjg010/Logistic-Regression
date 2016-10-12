@@ -125,9 +125,14 @@ summary(NH11_imputed)
 NH11_clean$everwrk <- NH11_imputed$everwrk
 summary(NH11_clean)
 str(NH11_clean)
-NH11_clean <- NH11_clean[NH11_clean$everwrk %in% c("1 Yes", "2 No"),]
+NH11_clean <- NH11_clean[NH11_clean$everwrk %in% c("1 Yes", "2 No"),]  # Keep only Yes and No options
 summary(NH11_clean)
 
+# Remove the additional levels
+
+NH11_clean$ever_wrk<-factor(NH11_clean$ever_wrk)
+NH11_clean$everwrk
+NH11_clean$everwrk <- factor(NH11_clean$everwrk)
 # Check
 subset(NH11_clean, everwrk == "7 Refused")
 
@@ -147,17 +152,46 @@ NH11_clean_test <- subset(NH11_clean, split == FALSE)
 nrow(NH11_clean_train)
 nrow(NH11_clean_test)
 NH11Log = glm(everwrk ~ ., data = NH11_clean_train, family = binomial)
+#NH11Log1 = glm(everwrk ~ ., data = NH11_clean_train, family = binomial)
 
 summary(NH11Log)
+# AIC = 18.44, smaller AIC means a stronger model
+#summary(NH11Log1)
 
 predictTrain <- predict(NH11Log, type ="response")
 summary(predictTrain) 
 
 tapply(predictTrain, NH11_clean_train$everwrk, mean)
+table(NH11_clean_train$everwrk, predictTrain > 0.3)
+# Sensitivity = 0.1766
+670/(670+3124)
+# Specificity = 0.9411
+19689/(19689+1231)
+
+# Try increasing the threshold
+table(NH11_clean_train$everwrk, predictTrain > 0.5)
+# Sensitivity = 0, goes down
+
+# Specificity = 1, goes up
+
+# Try lowering the threshold
 table(NH11_clean_train$everwrk, predictTrain > 0.2)
+# Sensitivity = 0.4497, goes up
+1706/(1706+2088)
+# Specificity = 0.7739, goes down
+16190/(16190+4730)
+
+# Picking the threshold, ROC curve 
+
 install.packages("ROCR")
 library(ROCR)
 ROCRpred <- prediction(predictTrain, NH11_clean_train$everwrk)
+ROCRperf <- performance(ROCRpred, "tpr", "fpr")
+plot(ROCRperf)
+plot(ROCRperf, colorize = TRUE)
+plot(ROCRperf, colorize = TRUE, print.cutoffs.at = seq(0,1,0.1), text.adj = c(-0.2, 1.7))
+
+
 ##   Note that the data is not perfectly clean and ready to be modeled. You
 ##   will need to clean up at least some of the variables before fitting
 ##   the model.
